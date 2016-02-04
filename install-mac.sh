@@ -9,7 +9,7 @@ if [ ! -d ~/bin ]; then
 fi
 
 if [ ! -h ~/bin/kbuild ]; then
-  ln -s $DOT/kbuild ~/bin/devman
+  ln -s $DOT/kbuild ~/bin/kbuild
 fi
 
 if [ -f ~/.zshrc ]; then
