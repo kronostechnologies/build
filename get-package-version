@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import sys
+import json
+
+if len(sys.argv) == 2:
+    pkg_json = sys.argv[1]
+    pkg = json.loads(open(pkg_json, 'r').read())
+    sys.stdout.write(pkg['version'].strip())
+else:
+    print('Usage: ' + __file__ + ' package.json')
+    exit(1)
+
