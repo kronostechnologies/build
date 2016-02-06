@@ -56,10 +56,10 @@ _composer () {
       then
         composer update --ignore-platform-reqs
       fi
-      composer install --ignore-platform-reqs
+      composer install -n --prefer-dist --ignore-platform-reqs
     elif [ "$1" == 'release' ];
     then
-      composer install -n --no-dev -o --prefer-dist --ignore-platform-reqs || composer update -n --prefer-dist --no-dev -o --ignore-platform-reqs 
+      composer install -n --no-dev -o --prefer-dist --ignore-platform-reqs
     fi
   fi
 }
