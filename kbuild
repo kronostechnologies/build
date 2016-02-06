@@ -4,7 +4,6 @@ set -e -u
 
 SCRIPT_DIR="$( cd -P "$( dirname "$0" )" && pwd )"
 CURRENT_DIR=`pwd`
-
 _npm () {
   if [ -f package.json ];
   then
@@ -52,10 +51,6 @@ _composer () {
   then
     if [ "$1" == 'dev' ];
     then
-      if [ -f composer.lock ] && [ $(grep composer\\.lock .gitignore) ]
-      then
-        composer update --ignore-platform-reqs
-      fi
       composer install -n --prefer-dist --ignore-platform-reqs
     elif [ "$1" == 'release' ];
     then
