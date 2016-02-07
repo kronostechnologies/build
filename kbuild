@@ -79,11 +79,83 @@ _clean () {
 
 }
 
-_build () {
-  fpm -s dir -t deb -a all -n $pkg_name --prefix $pkg_dir -v $version --inputs $pkg_install --deb-no-default-config-files
+_rpm () {
+  if [ ! `which rpmbuild` ];
+  then
+    sudo apt-get install rpm
+  fi
+  fpm -s dir -t rpm -a all -n $pkg_name --prefix $pkg_dir -v $pkg_version --inputs $pkg_deploy --log=error
+}
+
+_deb () {
+  if [ ! `which debuild` ];
+  then
+    sudo apt-get install debuild
+  fi
+
+  fpm -s dir -t deb -a all -n $pkg_name --prefix $pkg_dir -v $pkg_version --inputs $pkg_deploy --log=error
+}
+
+_getJson () {
+  set +e
+  echo $(python -c "import json,sys;obj=json.load(open('$pkg_file'));sys.stdout.write(obj['$1'].strip())" 2>/dev/null)
+  set -e
+}
+
+_publish () {
+  pkg_file='package.json'
+
+  if [ -f $pkg_file ];
+  then
+
+    pkg_name=$(_getJson 'name')
+    if [ -z $pkg_name ];
+    then 
+      echo 'Please specify name in package.json'
+      exit 1
+    fi
+
+    pkg_version=$(_getJson 'version')
+    if [ -z $pkg_version ];
+    then 
+      echo 'Please specify version in package.json'
+      echo 'version: "1.1.0"'
+      exit 1
+    fi
+
+    pkg_dir=$(_getJson 'pkg-dir')
+    if [ -z $pkg_dir ];
+    then 
+      echo 'Please specify pkg-dir in package.json'
+      echo 'pkg-dir: "/srv/kronos/app/"'
+      exit 1
+    fi
+    
+    pkg_deploy=$(_getJson 'pkg-deploy')
+
+    if [ -z $pkg_deploy ];
+    then 
+      echo 'Please specify pkg-deploy file in package.json'
+      echo 'pkg-deploy: ".deploy"'
+      echo 'One line per deployed file or folder'
+      exit 1
+    fi
+
+    if [ ! `which fpm` ];
+    then
+      gem install --no-ri --no-rdoc fpm
+    fi
+    _deb
+    _rpm
+  else
+    echo 'Could not load correct configuration from package.json'
+    exit 1
+  fi
+
 }
 
 cd $CURRENT_DIR
+
 if [[ $# != 0 && "$1" == '--dev' ]]
 then
   _npm dev
@@ -97,11 +169,11 @@ then
   _grunt release
   _composer release
   _clean
-elif [[ $# != 0 && "$1" == '--build' ]]
+elif [[ $# != 0 && "$1" == '--publish' ]]
 then
-  _build
+  _publish
 else
-  echo "Usage: $0 --dev | --release | --build" 
+  echo "Usage: $0 --dev | --release | --publish" 
   exit 1
 fi
 cd $CURRENT_DIR
