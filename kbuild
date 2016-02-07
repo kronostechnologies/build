@@ -79,24 +79,29 @@ _clean () {
 
 }
 
+_build () {
+  fpm -s dir -t deb -a all -n $pkg_name --prefix $pkg_dir -v $version --inputs $pkg_install --deb-no-default-config-files
+}
+
+cd $CURRENT_DIR
 if [[ $# != 0 && "$1" == '--dev' ]]
 then
-  cd $CURRENT_DIR
   _npm dev
   _bower dev
   _grunt dev
   _composer dev
-  cd $CURRENT_DIR
 elif [[ $# != 0 && "$1" == '--release' ]]
 then
-  cd $CURRENT_DIR
   _npm release
   _bower release
   _grunt release
   _composer release
   _clean
-  cd $CURRENT_DIR
+elif [[ $# != 0 && "$1" == '--build' ]]
+then
+  _build
 else
-  echo "Usage: $0 --dev | --release" 
+  echo "Usage: $0 --dev | --release | --build" 
   exit 1
 fi
+cd $CURRENT_DIR
