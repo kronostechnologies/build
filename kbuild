@@ -172,6 +172,7 @@ then
 elif [[ $# != 0 && "$1" == '--publish' ]]
 then
   _publish
+  wget http://mirror.ktech.io
 else
   echo "Usage: $0 --dev | --release | --publish" 
   exit 1
