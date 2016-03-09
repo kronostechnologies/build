@@ -59,7 +59,7 @@ _composer () {
       composer install -n --prefer-dist --ignore-platform-reqs
     elif [ "$1" == 'release' ];
     then
-      composer install -n --no-dev -o --prefer-dist --ignore-platform-reqs || composer update -n --prefer-dist --no-dev -o --ignore-platform-reqs 
+      composer install -n --no-dev -o --prefer-dist --ignore-platform-reqs || composer update -n --prefer-dist --no-dev -o --ignore-platform-reqs
     fi
   fi
 }
@@ -101,6 +101,6 @@ then
   _clean
   cd $CURRENT_DIR
 else
-  echo "Usage: $0 --dev | --release" 
+  echo "Usage: $0 --dev | --release"
   exit 1
 fi
