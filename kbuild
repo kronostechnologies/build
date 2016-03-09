@@ -54,9 +54,9 @@ _composer () {
     then
       if [ -f composer.lock ] && [ $(grep composer\\.lock .gitignore) ]
       then
-        composer update -n --prefer-source --ignore-platform-reqs
+        composer update -n --prefer-dist --ignore-platform-reqs
       fi
-      composer install -n --prefer-source --ignore-platform-reqs
+      composer install -n --prefer-dist --ignore-platform-reqs
     elif [ "$1" == 'release' ];
     then
       composer install -n --no-dev -o --prefer-dist --ignore-platform-reqs || composer update -n --prefer-dist --no-dev -o --ignore-platform-reqs
