@@ -65,6 +65,16 @@ check_variable() {
   fi
 }
 
+#
+# main
+#
+
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  IS_GIT_REPOSITORY=true
+else
+  IS_GIT_REPOSITORY=false
+fi
+
 if ! command -v fpm >/dev/null 2>&1; then
   echo "'fpm' is not installed. Consider adding 'gem install fpm -v 1.4.0' under the 'dependencies' section of your circle.yml file." 1>&2
   apt-get install ruby-dev
@@ -73,7 +83,10 @@ fi
 
 check_variable
 
-if [ ! -z ${CIRCLE_TAG+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+if ! $IS_GIT_REPOSITORY; then
+  echo "The current working directory does not appear to be a git repository. Using version '0.0.0~0'." 1>&2
+  VERSION="0.0.0~0"
+elif [ ! -z ${CIRCLE_TAG+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   echo 'Building stable version.' 1>&2
   #parse tag and generate version
   VERSION="$(retreive_version_number_from_tag ${CIRCLE_TAG})"
