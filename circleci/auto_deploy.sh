@@ -65,8 +65,9 @@ check_variable() {
   fi
 }
 
-if [ ! command -v foo >/dev/null 2>&1 ]; then
+if ! command -v fpm >/dev/null 2>&1; then
   echo "'fpm' is not installed. Consider adding 'gem install fpm -v 1.4.0' under the 'dependencies' section of your circle.yml file." 1>&2
+  apt-get install ruby-dev
   gem install fpm -v 1.4.0
 fi
 
