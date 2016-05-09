@@ -75,3 +75,5 @@ The `--description` fpm option overrides. Default is the reponame provided by `C
 ### DEPLOY_FILES
 The fpm argument overrides. By default, this is set to `.` which includes ALL file from the directory. You will usually want to override this setting by specifying directories and files.
 
+### DEPLOY_OTHER_OPTIONS
+Any additional options for fpm that are not included in this script may be specified by this environment variable. See https://github.com/jordansissel/fpm/wiki#usage for a complete list or `fpm --help`.

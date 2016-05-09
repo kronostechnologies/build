@@ -34,34 +34,40 @@ retreive_version_number_from_tag() {
 }
 
 check_variable() {
-  if [ -z ${CIRCLE_PROJECT_REPONAME+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+  # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+  if [ -z ${CIRCLE_PROJECT_REPONAME+x} ]; then
     echo "Environment variable 'CIRCLE_PROJECT_REPONAME' is not set. Using default value 'reponame'" 1>&2
     CIRCLE_PROJECT_REPONAME='reponame'
   fi
 
-  if [ -z ${CIRCLE_REPOSITORY_URL+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+  if [ -z ${CIRCLE_REPOSITORY_URL+x} ]; then
     echo "Environment variable 'CIRCLE_REPOSITORY_URL' is not set. Using default value 'repourl'" 1>&2
     CIRCLE_REPOSITORY_URL='repourl'
   fi
 
-  if [ -z ${DEPLOY_PREFIX+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+  if [ -z ${DEPLOY_PREFIX+x} ]; then
     echo "Environment variable 'DEPLOY_PREFIX' is not set. Using default value '/srv/kronos/${CIRCLE_PROJECT_REPONAME}'" 1>&2
     DEPLOY_PREFIX="/srv/kronos/${CIRCLE_PROJECT_REPONAME}/"
   fi
 
-  if [ -z ${DEPLOY_DIRECTORIES+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+  if [ -z ${DEPLOY_DIRECTORIES+x} ]; then
     echo "Environment variable 'DEPLOY_DIRECTORIES' is not set. Using default value '/srv/kronos/${CIRCLE_PROJECT_REPONAME}/ /etc/kronos/${CIRCLE_PROJECT_REPONAME}/'" 1>&2
     DEPLOY_DIRECTORIES="/srv/kronos/${CIRCLE_PROJECT_REPONAME}/ /etc/kronos/${CIRCLE_PROJECT_REPONAME}/"
   fi
 
-  if [ -z ${DEPLOY_DESCRIPTION+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+  if [ -z ${DEPLOY_DESCRIPTION+x} ]; then
     echo "Environment variable 'DEPLOY_DESCRIPTION' is not set. Using default value '${CIRCLE_PROJECT_REPONAME}'" 1>&2
     DEPLOY_DESCRIPTION='repourl'
   fi
 
-  if [ -z ${DEPLOY_FILES+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+  if [ -z ${DEPLOY_FILES+x} ]; then
     echo "Environment variable 'DEPLOY_FILES' is not set. Using default value '.'" 1>&2
     DEPLOY_FILES='.'
+  fi
+
+  if [ -z ${DEPLOY_OTHER_OPTIONS+x} ]; then
+    echo "Environment variable 'DEPLOY_OTHER_OPTIONS' is not set." 1>&2
+    DEPLOY_OTHER_OPTIONS=''
   fi
 }
 
@@ -121,6 +127,7 @@ fpm -s dir -t deb -v "$VERSION" -n "${CIRCLE_PROJECT_REPONAME}" \
 --architecture "all" \
 --package "./package/" \
 --description "${DEPLOY_DESCRIPTION}" \
+${DEPLOY_OTHER_OPTIONS} \
 ${DEPLOY_FILES};
 
 echo 'done'
