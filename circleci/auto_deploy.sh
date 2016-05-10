@@ -142,8 +142,8 @@ ${DEPLOY_FILES};
 
 if $CIRCLECI; then
     echo "Deploying './package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb' to 'repo.ktech.io' for '${STAGE}'"
-    scp "./package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb" repo.ktech.io:
-    ssh repo.ktech.io "freight add ${STAGE}"
+    scp -i ~/.ssh/id_circleci_github "./package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb" kronostechnologies-build@repo.ktech.io:
+    ssh -i ~/.ssh/id_circleci_github kronostechnologies-build@repo.ktech.io "freight add ${STAGE}"
 fi
 
 echo 'done'
