@@ -66,14 +66,22 @@ check_variable() {
   fi
 
   if [ -z ${DEPLOY_OTHER_OPTIONS+x} ]; then
-    echo "Environment variable 'DEPLOY_OTHER_OPTIONS' is not set." 1>&2
+    echo "Environment variable 'DEPLOY_OTHER_OPTIONS' is not set. Using default value ''" 1>&2
     DEPLOY_OTHER_OPTIONS=''
+  fi
+
+  if [ -z ${CIRCLECI+x} ]; then
+    echo "Environment variable 'CIRCLECI' is not set. Initializing 'CIRCLECI' and 'CI' variable to bool 'false'" 1>&2
+    CIRCLECI=false
+    CI=false
   fi
 }
 
 #
 # main
 #
+
+STAGE='testing'
 
 if git rev-parse --git-dir > /dev/null 2>&1; then
   IS_GIT_REPOSITORY=true
@@ -94,10 +102,12 @@ if ! $IS_GIT_REPOSITORY; then
   VERSION="0.0.0~0"
 elif [ ! -z ${CIRCLE_TAG+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   echo 'Building stable version.' 1>&2
+  STAGE='stable'
   #parse tag and generate version
   VERSION="$(retreive_version_number_from_tag ${CIRCLE_TAG})"
 else
   echo "Building release version." 1>&2
+  STAGE='release'
   # create release tag from last tag.
   tag_name=$(git_tag_last)
   if [ -z "$tag_name" ]; then
@@ -129,5 +139,11 @@ fpm -s dir -t deb -v "$VERSION" -n "${CIRCLE_PROJECT_REPONAME}" \
 --description "${DEPLOY_DESCRIPTION}" \
 ${DEPLOY_OTHER_OPTIONS} \
 ${DEPLOY_FILES};
+
+if $CIRCLECI; then
+    echo "Deploying './package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb' to 'repo.ktech.io' for '${STAGE}'"
+    scp "./package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb" repo.ktech.io:
+    ssh repo.ktech.io "freight add ${STAGE}"
+fi
 
 echo 'done'
