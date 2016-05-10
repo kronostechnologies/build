@@ -63,6 +63,12 @@ The repo name of the project. This variable is auto set by circleci.
 ### CIRCLE_REPOSITORY_URL
 The repo url. This variable is auto set by circleci.
 
+### CIRCLECI
+A flag that indicates if the environment is a circleci environment or not.
+
+### CI
+Same as CIRCLECI.
+
 ### DEPLOY_PREFIX
 The `--prefix` fpm option overrides. Default is `/srv/kronos/${CIRCLE_PROJECT_REPONAME}`.
 
@@ -75,3 +81,5 @@ The `--description` fpm option overrides. Default is the reponame provided by `C
 ### DEPLOY_FILES
 The fpm argument overrides. By default, this is set to `.` which includes ALL file from the directory. You will usually want to override this setting by specifying directories and files.
 
+### DEPLOY_OTHER_OPTIONS
+Any additional options for fpm that are not included in this script may be specified by this environment variable. See https://github.com/jordansissel/fpm/wiki#usage for a complete list or `fpm --help`.
