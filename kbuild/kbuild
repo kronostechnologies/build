@@ -10,6 +10,7 @@ _npm () {
   then
     if [ "$1" == 'dev' ];
     then
+      npm prune
       npm install
       npm update
     elif [ "$1" == 'release' ];
