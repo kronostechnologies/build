@@ -22,7 +22,7 @@ _npm () {
 _bower () {
   if [ -f bower.json ];
   then
-    if [ ! -f /usr/bin/bower ];
+    if [ ! `which bower` ];
     then
       npm install -g bower
     fi
@@ -42,6 +42,11 @@ _bower () {
 _grunt () {
   if [ -f Gruntfile.js ];
   then
+    if [ ! `which grunt` ];
+    then
+      npm install -g grunt-cli
+    fi
+
     if [ "$1" == 'dev' ];
     then
       grunt build-dev
