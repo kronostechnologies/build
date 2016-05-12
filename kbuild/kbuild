@@ -42,7 +42,7 @@ _bower () {
 _grunt () {
   if [ -f Gruntfile.js ];
   then
-    if [ ! `which grunt` ];
+    if [ ! `which grunt` ];
     then
       npm install -g grunt-cli
     fi
