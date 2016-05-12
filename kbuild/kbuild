@@ -24,7 +24,7 @@ _bower () {
   then
     if [ ! -f /usr/bin/bower ];
     then
-      sudo npm install -g bower
+      npm install -g bower
     fi
 
     if [ "$1" == 'dev' ];
