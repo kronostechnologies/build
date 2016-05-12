@@ -22,7 +22,7 @@ _npm () {
 _bower () {
   if [ -f bower.json ];
   then
-    if [ ! `which bower` ];
+    if [ ! `which bower` ];
     then
       npm install -g bower
     fi
