@@ -75,12 +75,19 @@ check_variable() {
     CIRCLECI=false
     CI=false
   fi
+
+  if [ -z ${DEPLOY_PACKAGE_NAME+x} ]; then
+    echo "Environment variable 'DEPLOY_PACKAGE_NAME' is not set. Initializing 'DEPLOY_PACKAGE_NAME' to '${CIRCLE_PROJECT_REPONAME}' (CIRCLE_PROJECT_REPONAME variable value)" 1>&2
+    DEPLOY_PACKAGE_NAME=CIRCLE_PROJECT_REPONAME
+  fi
 }
 
 #
 # main
 #
 
+# Testing stage is used only if the script is not used in a git repository
+# This is to protect the deploy shell from uncaring developpers
 STAGE='testing'
 
 if git rev-parse --git-dir > /dev/null 2>&1; then
@@ -119,15 +126,15 @@ else
   fi
 fi
 
-if [ -f "./package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb" ]; then
-  rm -f "./package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb"
+if [ -f "./package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb" ]; then
+  rm -f "./package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb"
 fi
 
 if [ ! -d "./package" ]; then
   mkdir package
 fi
 
-fpm -s dir -t deb -v "$VERSION" -n "${CIRCLE_PROJECT_REPONAME}" \
+fpm -s dir -t deb -v "$VERSION" -n "${DEPLOY_PACKAGE_NAME}" \
 --prefix "${DEPLOY_PREFIX}" \
 --deb-priority "optional" \
 --directories "${DEPLOY_DIRECTORIES}" \
@@ -141,9 +148,10 @@ ${DEPLOY_OTHER_OPTIONS} \
 ${DEPLOY_FILES};
 
 if $CIRCLECI; then
-    echo "Deploying './package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb' to 'repo.ktech.io' for '${STAGE}'"
-    scp -i ~/.ssh/id_circleci_github "./package/${CIRCLE_PROJECT_REPONAME}_${VERSION}_all.deb" kronostechnologies-build@repo.ktech.io:
-    ssh -i ~/.ssh/id_circleci_github kronostechnologies-build@repo.ktech.io "freight add ${STAGE}"
+    echo "Deploying './package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb' to 'repo.ktech.io' for '${STAGE}'"
+    scp -o SendEnv=DEPLOY_PACKAGE_NAME -i ~/.ssh/id_circleci_github "./package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb" kronostechnologies-build@repo.ktech.io:
+    ssh -o SendEnv=DEPLOY_PACKAGE_NAME -i ~/.ssh/id_circleci_github kronostechnologies-build@repo.ktech.io "freight add ${STAGE}"
+    ssh -o SendEnv=DEPLOY_PACKAGE_NAME -i ~/.ssh/id_circleci_github kronostechnologies-build@repo.ktech.io "deploy ${STAGE}"
 fi
 
 echo 'done'
