@@ -1,6 +1,6 @@
 # CIRCLECI script auto_deploy.sh
 
-CircleCI package deploy is used to auto build and auto deploy a package to a debian repository. Packages are build using `fpm` tool version 1.4.0 (`gem install fpm -v 1.4.0`).
+CircleCI package deploy is used to auto build and auto deploy a package to a debian repository by connecting on the `autodeploy-shell`. Packages are build using `fpm` tool version 1.4.0 (`gem install fpm -v 1.4.0`).
 
 ## Tag inference
 
@@ -36,9 +36,9 @@ Note that the `wget` command needs to point a download miror of the auto_deploy.
 
 See https://circleci.com/docs/configuration/#deployment for more details.
 
-## Environment variable
+## Environment variables
 
-Environment variable are used to configure the build and deploy process. Any variable that start with `CIRCLE_` are CIRCLECI environment variable and should not be overriden. Variable starting with `DEPLOY_` are script's own environment variable and should be overriden.
+Environment variables are used to configure the build and deploy process. Any variable that start with `CIRCLE_` are CIRCLECI environment variable and should not be overriden. Variable starting with `DEPLOY_` are script's own environment variable and should be overriden.
 
 Below an example of overriding environment variable.
 
@@ -83,3 +83,12 @@ The fpm argument overrides. By default, this is set to `.` which includes ALL fi
 
 ### DEPLOY_OTHER_OPTIONS
 Any additional options for fpm that are not included in this script may be specified by this environment variable. See https://github.com/jordansissel/fpm/wiki#usage for a complete list or `fpm --help`.
+
+### DEPLOY_PACKAGE_NAME
+Specify the package name. Default value is the value of $CIRCLE_PROJECT_REPONAME
+
+## Autodeploy-Shell Environment Variable
+
+Below are the environment variable that are sent to the deploy shell.
+
+  - DEPLOY_PACKAGE_NAME
