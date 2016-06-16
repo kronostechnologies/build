@@ -133,7 +133,7 @@ fi
 if [ ! -d "./package" ]; then
   mkdir package
 fi
-echo ${DEPLOY_PACKAGE_NAME};
+
 fpm -s dir -t deb -v "$VERSION" -n "${DEPLOY_PACKAGE_NAME}" \
 --prefix "${DEPLOY_PREFIX}" \
 --deb-priority "optional" \
