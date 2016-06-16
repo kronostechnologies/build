@@ -78,7 +78,7 @@ check_variable() {
 
   if [ -z ${DEPLOY_PACKAGE_NAME+x} ]; then
     echo "Environment variable 'DEPLOY_PACKAGE_NAME' is not set. Initializing 'DEPLOY_PACKAGE_NAME' to '${CIRCLE_PROJECT_REPONAME}' (CIRCLE_PROJECT_REPONAME variable value)" 1>&2
-    DEPLOY_PACKAGE_NAME=CIRCLE_PROJECT_REPONAME
+    DEPLOY_PACKAGE_NAME=$CIRCLE_PROJECT_REPONAME
   fi
 }
 
@@ -133,7 +133,7 @@ fi
 if [ ! -d "./package" ]; then
   mkdir package
 fi
-
+echo ${DEPLOY_PACKAGE_NAME};
 fpm -s dir -t deb -v "$VERSION" -n "${DEPLOY_PACKAGE_NAME}" \
 --prefix "${DEPLOY_PREFIX}" \
 --deb-priority "optional" \
