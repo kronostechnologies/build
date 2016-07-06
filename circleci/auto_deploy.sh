@@ -116,13 +116,13 @@ else
   echo "Building release version." 1>&2
   STAGE='release'
   # create release tag from last tag.
-  tag_name=$(git_tag_last)
-  if [ -z "$tag_name" ]; then
+  current_tag_name=$(git_tag_last)
+  if [ -z "$current_tag_name" ]; then
     echo "It seems that there is no tag yet in this project. Consider creating a tag with 'git tag -a v1.0.0 -m \"Initial release\"'. For now, using version '0.0.0'." 1>&2
     VERSION="0.0.0~$(git_number_of_commit)"
   else
-    tag_name=$(git_tag_increment_minor "$tag_name")
-    VERSION="$(retreive_version_number_from_tag ${tag_name})~$(git_number_of_commit_since_tag ${tag_name})"
+    next_tag_name=$(git_tag_increment_minor "$current_tag_name")
+    VERSION="$(retreive_version_number_from_tag ${next_tag_name})~$(git_number_of_commit_since_tag ${current_tag_name})"
   fi
 fi
 
