@@ -103,3 +103,12 @@ The `GIT` setting will use `git` to parse the last tag and generate a new minor 
 Below are the environment variable that are sent to the deploy shell.
 
   - DEPLOY_PACKAGE_NAME
+
+## Testing the autodeploy
+
+The script `build.py` is used to test the building process and autodeployment. It will parse your project's circle.yml, export it's environment variable and trigger the `auto_deploy.sh`. Fortunately, any `CIRCLE_*` comes from circleci itself so these variable will never be set. This will cause the `auto_deploy.sh` script to skip the deploying phase.
+
+Simple usage:
+```
+./build.py ~/path/to/my/project/root
+```
