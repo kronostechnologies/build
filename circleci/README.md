@@ -96,7 +96,7 @@ Tries to read the version number of `package.json` file. Whatever the version nu
 #### GIT
 The `GIT` setting will use `git` to parse the last tag and generate a new minor version from it. Fallback on version 0.0.0 if no tags are present or tag is incompatible with `v[0-9].[0-9].[0-9]`.
 
-  | Because `GIT` fallback on version `0.0.0~$number_of_commit_since_begining_of_project`, it is recommended to set this provider as last.
+  > Because `GIT` fallback on version `0.0.0~$number_of_commit_since_begining_of_project`, it is recommended to set this provider as last.
 
 ## Autodeploy-Shell Environment Variable
 
