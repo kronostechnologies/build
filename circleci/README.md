@@ -38,7 +38,7 @@ See https://circleci.com/docs/configuration/#deployment for more details.
 
 ## Environment variables
 
-Environment variables are used to configure the build and deploy process. Any variable that start with `CIRCLE_` are CIRCLECI environment variable and should not be overriden. Variable starting with `DEPLOY_` are script's own environment variable and should be overriden.
+Environment variables are used to configure the build and deploy process. Any variable that start with `CIRCLE_` are CIRCLECI environment variable and should not be overriden. Variable starting with `DEPLOY_` are script's own environment variable and can be overriden.
 
 Below an example of overriding environment variable.
 
@@ -64,10 +64,7 @@ The repo name of the project. This variable is auto set by circleci.
 The repo url. This variable is auto set by circleci.
 
 ### CIRCLECI
-A flag that indicates if the environment is a circleci environment or not.
-
-### CI
-Same as CIRCLECI.
+A flag that indicates if the environment is a circleci environment or not. This is needed to trigger the deploying phase of `auto_deploy.sh`.
 
 ### DEPLOY_PREFIX
 The `--prefix` fpm option overrides. Default is `/srv/kronos/${CIRCLE_PROJECT_REPONAME}`.
