@@ -126,9 +126,8 @@ check_variable() {
   fi
 
   if [ -z ${CIRCLECI+x} ]; then
-    echo "Environment variable 'CIRCLECI' is not set. Initializing 'CIRCLECI' and 'CI' variable to bool 'false'" 1>&2
+    echo "Environment variable 'CIRCLECI' is not set. Initializing 'CIRCLECI' variable to bool 'false'" 1>&2
     CIRCLECI=false
-    CI=false
   fi
 
   if [ -z ${DEPLOY_PACKAGE_NAME+x} ]; then
