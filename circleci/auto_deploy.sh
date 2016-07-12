@@ -33,6 +33,61 @@ retreive_version_number_from_tag() {
   echo "$1" | grep -oP '([0-9]*\.*)*'
 }
 
+get_version_from_packagejson() {
+  echo "Using 'PACKAGEJSON' version provider," 1>&2
+  if [ -f "package.json" ]; then
+    echo $(grep -m1 version package.json | awk -F: '{ print $2 }' | sed 's/[", ]//g')
+  else
+    echo "File 'package.json' does not exist." 1>&2
+  fi
+}
+
+get_version_from_git() {
+  echo "Using 'GIT' version provider" 1>&2
+  if git rev-parse --git-dir > /dev/null 2>&1; then # are we n a git repository ?
+    if [ $1 == "stable" ]; then
+      #parse tag and generate version
+      echo "$(retreive_version_number_from_tag ${CIRCLE_TAG})";
+      return 0
+    elif [ $1 == "release" ]; then
+      # create release tag from last tag.
+      current_tag_name=$(git_tag_last)
+      if [ -z "$current_tag_name" ]; then
+        echo "It seems that there is no tag yet in this project. Consider creating a tag with 'git tag -a v1.0.0 -m \"Initial release\"'. For now, using version '0.0.0'." 1>&2
+        echo "0.0.0~$(git_number_of_commit)"
+        return 0
+      else
+        next_tag_name=$(git_tag_increment_minor "$current_tag_name")
+        echo "$(retreive_version_number_from_tag ${next_tag_name})~$(git_number_of_commit_since_tag ${current_tag_name})"
+        return 0
+      fi
+    fi
+  else
+    echo 'Not a git repository.' 1>&2
+  fi
+}
+
+get_version() {
+  # $1 = version provisions (AUTO, PACKAGEJSON, GIT)
+  # $2 = stage (testing, release, stable)
+  local version
+  for provider in $1; do
+    case "$provider" in
+      'PACKAGEJSON')
+        version="$(get_version_from_packagejson)"
+        ;;
+      'GIT')
+        version="$(get_version_from_git $2)"
+        ;;
+    esac
+    if [ -n "$version" ]; then
+      echo $version;
+      return 0
+    fi
+  done
+  echo '0.0.0~0';
+}
+
 check_variable() {
   # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   if [ -z ${CIRCLE_PROJECT_REPONAME+x} ]; then
@@ -80,21 +135,16 @@ check_variable() {
     echo "Environment variable 'DEPLOY_PACKAGE_NAME' is not set. Initializing 'DEPLOY_PACKAGE_NAME' to '${CIRCLE_PROJECT_REPONAME}' (CIRCLE_PROJECT_REPONAME variable value)" 1>&2
     DEPLOY_PACKAGE_NAME=$CIRCLE_PROJECT_REPONAME
   fi
+
+  if [ -z ${DEPLOY_VERSION_PROVIDER+x} ]; then
+    echo "Environment variable 'DEPLOY_VERSION_PROVIDER' is not set. Initializing 'DEPLOY_VERSION_PROVIDER' to 'GIT'" 1>&2
+    DEPLOY_VERSION_PROVIDER='GIT'
+  fi
 }
 
 #
 # main
 #
-
-# Testing stage is used only if the script is not used in a git repository
-# This is to protect the deploy shell from uncaring developpers
-STAGE='testing'
-
-if git rev-parse --git-dir > /dev/null 2>&1; then
-  IS_GIT_REPOSITORY=true
-else
-  IS_GIT_REPOSITORY=false
-fi
 
 if ! command -v fpm >/dev/null 2>&1; then
   echo "'fpm' is not installed. Consider adding 'gem install fpm -v 1.4.0' under the 'dependencies' section of your circle.yml file." 1>&2
@@ -104,27 +154,15 @@ fi
 
 check_variable
 
-if ! $IS_GIT_REPOSITORY; then
-  echo "The current working directory does not appear to be a git repository. Using version '0.0.0~0'." 1>&2
-  VERSION="0.0.0~0"
-elif [ ! -z ${CIRCLE_TAG+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+if [ ! -z ${CIRCLE_TAG+x} ]; then # why +x : http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
   echo 'Building stable version.' 1>&2
   STAGE='stable'
-  #parse tag and generate version
-  VERSION="$(retreive_version_number_from_tag ${CIRCLE_TAG})"
 else
   echo "Building release version." 1>&2
   STAGE='release'
-  # create release tag from last tag.
-  current_tag_name=$(git_tag_last)
-  if [ -z "$current_tag_name" ]; then
-    echo "It seems that there is no tag yet in this project. Consider creating a tag with 'git tag -a v1.0.0 -m \"Initial release\"'. For now, using version '0.0.0'." 1>&2
-    VERSION="0.0.0~$(git_number_of_commit)"
-  else
-    next_tag_name=$(git_tag_increment_minor "$current_tag_name")
-    VERSION="$(retreive_version_number_from_tag ${next_tag_name})~$(git_number_of_commit_since_tag ${current_tag_name})"
-  fi
 fi
+
+VERSION="$(get_version $DEPLOY_VERSION_PROVIDER $STAGE)"
 
 if [ -f "./package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb" ]; then
   rm -f "./package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb"

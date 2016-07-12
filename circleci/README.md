@@ -85,7 +85,18 @@ The fpm argument overrides. By default, this is set to `.` which includes ALL fi
 Any additional options for fpm that are not included in this script may be specified by this environment variable. See https://github.com/jordansissel/fpm/wiki#usage for a complete list or `fpm --help`.
 
 ### DEPLOY_PACKAGE_NAME
-Specify the package name. Default value is the value of $CIRCLE_PROJECT_REPONAME
+Specify the package name. Default value is the value of $CIRCLE_PROJECT_REPONAME.
+
+### DEPLOY_VERSION_PROVIDER
+Specify how the version number is generated. This value can take one value i.e. `GIT` or multiple space separated value i.e. `PACKAGEJSON GIT`. Default value is `GIT`.
+
+#### PACKAGEJSON
+Tries to read the version number of `package.json` file. Whatever the version number is, that is what will be used to generate the package version unless the version is empty.
+
+#### GIT
+The `GIT` setting will use `git` to parse the last tag and generate a new minor version from it. Fallback on version 0.0.0 if no tags are present or tag is incompatible with `v[0-9].[0-9].[0-9]`.
+
+  | Because `GIT` fallback on version `0.0.0~$number_of_commit_since_begining_of_project`, it is recommended to set this provider as last.
 
 ## Autodeploy-Shell Environment Variable
 
