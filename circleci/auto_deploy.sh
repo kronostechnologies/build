@@ -36,7 +36,7 @@ retreive_version_number_from_tag() {
 get_version_from_packagejson() {
   echo "Using 'PACKAGEJSON' version provider," 1>&2
   if [ -f "package.json" ]; then
-    echo $(grep -m1 version package.json | awk -F: '{ print $2 }' | sed 's/[", ]//g')
+    echo $(grep -m1 version package.json | awk -F: '{ print $2 }' | sed 's/[", ]//g' | sed 's/-/~/g')
   else
     echo "File 'package.json' does not exist." 1>&2
   fi
