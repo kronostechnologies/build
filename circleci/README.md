@@ -71,7 +71,7 @@ The `--directories` fpm option overrides. Default is `/srv/kronos/${CIRCLE_PROJE
 The `--description` fpm option overrides. Default is the reponame provided by `CIRCLE_PROJECT_REPONAME`.
 
 ### DEPLOY_FILES
-The fpm argument overrides. By default, this is set to `.` which includes ALL file from the directory. You will usually want to override this setting by specifying directories and files.
+The fpm argument overrides. You may specify the output path of a file by adding `=`. For example, `DEPLOY_FILES: src/file=.` will install the file `src/file` directly into the current directory defined by `DEPLOY_PREFIX`. Default is set to `.` which includes ALL file from the directory.
 
 ### DEPLOY_OTHER_OPTIONS
 Any additional options for fpm that are not included in this script may be specified by this environment variable. See https://github.com/jordansissel/fpm/wiki#usage for a complete list or `fpm --help`.
