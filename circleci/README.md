@@ -2,13 +2,8 @@
 
 CircleCI package deploy is used to auto build and auto deploy a package to a debian repository by connecting on the `autodeploy-shell`. Packages are build using `fpm` tool version 1.4.0 (`gem install fpm -v 1.4.0`).
 
-## Tag inference
+## Stage
 
-This script is able to infer the tag and generate a package version from it. If no tag are set at all, version 0.0.0 is used. Tags should be of the form `v[0-9]\.[0-9]\.[0-9]` i.e. `v1.1.0`.
-
-If the `CIRCLE_TAG` is set, a stable package is built using the `CIRCLE_TAG` as it's version.
-
-If the `CIRCLE_TAG` is not set, a release package is built. A release package will try to find the latest tag, increment it's minor version by one, append `~` at the end and append the number of commit since the last tag. For example, if a tag `v1.0.0` exist and a commit is pushed on master, the version of the package will be `1.1.0~1`. If another commit is made, `1.1.0~2` and so on.
 
 ## CIRCLECI circle.yml deploy example
 
@@ -91,7 +86,9 @@ Specify how the version number is generated. This value can take one value i.e. 
 Tries to read the version number of `package.json` file. Whatever the version number is, that is what will be used to generate the package version unless the version is empty.
 
 #### GIT
-The `GIT` setting will use `git` to parse the last tag and generate a new minor version from it. Fallback on version 0.0.0 if no tags are present or tag is incompatible with `v[0-9].[0-9].[0-9]`.
+The `GIT` setting will use `git` as it's version provider. If the `CIRCLE_TAG` is set, the `CIRCLE_TAG` environment variable is used as it's version. Otherwise, `GIT` will try to find the latest tag, increment it's minor version by one, append `~` and add the number of commit since the last tag.
+
+For example, if a tag `v1.0.0` exist and a commit is pushed on master, the version of the package will be `1.1.0~1`. If another commit is made, `1.1.0~2` and so on.
 
   > Because `GIT` fallback on version `0.0.0~$number_of_commit_since_begining_of_project`, it is recommended to set this provider as last.
 
