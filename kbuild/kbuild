@@ -31,11 +31,9 @@ _bower () {
     if [ "$1" == 'dev' ];
     then
       bower --config.interactive=false prune
-      bower --config.interactive=false install
       bower --config.interactive=false update
     elif [ "$1" == 'release' ];
     then
-      bower --config.interactive=false install
       bower --config.interactive=false update
     fi
   fi
