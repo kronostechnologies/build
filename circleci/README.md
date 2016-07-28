@@ -74,7 +74,7 @@ The `--description` fpm option overrides. Default is the reponame provided by `C
 Files that fpm will add to the package. By default, every file will be inside the `DEPLOY_PREFIX` folder. Howerver, you may specify another folder by adding `=` operator. For example, `DEPLOY_FILES: src/file=/etc/` will install the file `src/file` into `/etc/`. If `DEPLOY_FILES` is not specified, it defaults to `.` which includes ALL file from the directory of `DEPLOY_PREFIX`.
 
 ### DEPLOY_OTHER_OPTIONS
-Any additional options for fpm that are not included in this script may be specified by this environment variable. See https://github.com/jordansissel/fpm/wiki#usage for a complete list or `fpm --help`.
+Any additional options for fpm that are not included in this script may be specified by this environment variable. Some useful options are `--depends` which add package dependencies and `--after-install` to specify an after install script. For example, `DEPLOY_OTHER_OPTIONS: --depends g++ --after-install src/post.sh` would add a dependency on g++ and execute the `src/post.sh` script. See [the fpm documentation](https://github.com/jordansissel/fpm/wiki#usage) for a complete list or `fpm --help`.
 
 ### DEPLOY_PACKAGE_NAME
 Specify the package name. Default value is the value of $CIRCLE_PROJECT_REPONAME.
