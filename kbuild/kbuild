@@ -62,7 +62,7 @@ _composer () {
   then
     if [ "$1" == 'dev' ];
     then
-      if [ -f composer.lock ] && [ $(grep composer\\.lock .gitignore) ]
+      if [ -f composer.lock ] && grep -qq composer\\.lock .gitignore
       then
         composer update -n --prefer-dist --ignore-platform-reqs
       fi
