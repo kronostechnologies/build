@@ -16,7 +16,7 @@ alias r=reload
 get-image-field() {
   local imageId=$1
   local field=$2
-  : ${imageId:? reuired}
+  : ${imageId:? required}
   : ${field:? required}
 
   docker images --no-trunc|sed -n "/${imageId}/ s/ \+/ /gp"|cut -d" " -f $field
