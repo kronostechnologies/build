@@ -110,7 +110,19 @@ then
   _composer release
   _clean
   cd $CURRENT_DIR
+elif [[ $# != 0 && "$1" == '--release-tests' ]]
+then
+  cd $CURRENT_DIR
+  _npm release
+  _bower release
+  _grunt release
+  _composer dev
+  _clean
+  cd $CURRENT_DIR
+elif [[ $# != 0 && "$1" == '--remove-tests' ]]
+then
+  _composer release
 else
-  echo "Usage: $0 --dev | --release"
+  echo "Usage: $0 --dev | --release | --release-tests | --remove-tests"
   exit 1
 fi
