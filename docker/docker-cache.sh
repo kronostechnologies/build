@@ -31,15 +31,15 @@ get-image-tag() {
 }
 
 save() {
-  local dangling=`docker images -f "dangling=true" -q`
-  local ids=$(docker images -q)
-  local name safename tag
+  local dangling ids name safename tag
 
+  dangling=`docker images -f "dangling=true" -q`
   if [[ -n $dangling ]]; then
-    echo [DEBUG] removing dangling image before save
-    docker rmi $(docker images -f "dangling=true" -q) 2>&1 > /dev/null
+    echo [DEBUG] removing dangling image $dangling
+    docker rmi $dangling 2>&1 > /dev/null
   fi
 
+  ids=$(docker images -q)
   for id in $ids; do
     name=$(get-image-name $id)
     tag=$(get-image-tag $id)
@@ -47,7 +47,7 @@ save() {
        dir=${name%/*}
        mkdir -p $dir
     fi
-    echo [DEBUG] save $name:$tag ...
+    echo [DEBUG] save $name:$tag with id $id ...
     (time  docker save -o $name.$tag.dim $name:$tag) 2>&1|grep real
   done
 }
@@ -56,7 +56,7 @@ load() {
   local name safename noextension tag
 
   for image in $(find . -name \*.dim); do
-    echo [DEBUG] load
+    echo [DEBUG] load $image
     tar -Oxf $image repositories
     echo
     docker load -i $image
