@@ -10,9 +10,10 @@ _npm () {
   then
     if [ "$1" == 'dev' ];
     then
-      npm prune
+      local NPM3=$([[ `npm -v` == 3.* ]]; echo $?)
+      [[ $NPM3 -eq 0 ]] && npm prune
       npm install
-      npm update
+      [[ $NPM3 -eq 0 ]] && npm update
     elif [ "$1" == 'release' ];
     then
       npm install
