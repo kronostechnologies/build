@@ -8,16 +8,7 @@ CURRENT_DIR=`pwd`
 _npm () {
   if [ -f package.json ];
   then
-    if [ "$1" == 'dev' ];
-    then
-      local NPM3=$([[ `npm -v` == 3.* ]]; echo $?)
-      [[ $NPM3 -ne 0 ]] || npm prune
-      npm install
-      [[ $NPM3 -ne 0 ]] || npm update
-    elif [ "$1" == 'release' ];
-    then
-      npm install
-    fi
+    npm install
   fi
 }
 
@@ -32,11 +23,8 @@ _bower () {
     if [ "$1" == 'dev' ];
     then
       bower --config.interactive=false prune
-      bower --config.interactive=false update
-    elif [ "$1" == 'release' ];
-    then
-      bower --config.interactive=false update
     fi
+    bower --config.interactive=false update
   fi
 }
 
