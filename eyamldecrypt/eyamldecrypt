@@ -1,0 +1,115 @@
+#!/bin/bash
+# set -e -u
+
+# GIVEN private/public PKCS7 keys and a folder containing .eyml files
+# WHEN called from the command line with valid key and configuration folder
+# THEN deposit unencrypted .yml files next to .eyml files
+
+
+# parse args
+usage () {
+  cat <<EOF
+eyamldecrypt -k|--key <private_key_file> -p|--pub <pkcs_public_key_file> -d|--directory <dir-with-eyml-files>
+
+# environment variables (has priority over params)
+  PRIVATE_KEY      PKCS7 private key            export PRIVATE_KEY=\$(cat ./keys/private_key.pkcs7.pem)
+  PUBLIC_KEY       PKCS7 public key             export PUBLIC_KEY=\$(cat ./keys/public_key.pkcs7.pem)
+  CONF_DIR         Directory of eyml files      export CONF_DIR=./application/configs/
+
+EOF
+  exit 1
+}
+
+while [[ $# -gt 0 ]]
+do
+  key="$1"
+
+  case $key in
+      -k|--key)
+      privateKeyFile="$2"
+      shift
+      ;;
+      -p|--pub)
+      publicKeyFile="$2"
+      shift
+      ;;
+      -d|--directory)
+      configDir="$2"
+      shift
+      ;;
+      -h|--help)
+      usage
+      ;;
+      *)
+      ;;
+  esac
+  shift
+done
+
+
+# load env
+if [ ! -z "${PRIVATE_KEY}" ]
+then
+  echo "Setting private key from environment"
+  privateKeyTmpFile=$(mktemp)
+  echo "${PRIVATE_KEY}" > $privateKeyTmpFile
+  privateKeyFile=$privateKeyTmpFile
+fi
+
+if [ ! -z "${PUBLIC_KEY}" ]
+then
+  echo "Setting public key from env"
+  publicKeyTmpFile=$(mktemp)
+  echo "${PUBLIC_KEY}" > $publicKeyTmpFile
+  publicKeyFile=$publicKeyTmpFile
+fi
+
+if [ ! -z "${CONF_DIR}" ]
+then
+  echo "Setting directory from env"
+  configDir="${CONF_DIR}"
+fi
+
+
+# validate inputs
+if [ -z $privateKeyFile ] || [ ! -f $privateKeyFile ]
+then
+  echo "Invalid private key file"
+  usage
+fi
+
+if [ -z $publicKeyFile ] || [ ! -f $publicKeyFile ]
+then
+  echo "Invalid public key file"
+  usage
+fi
+
+if [ -z $configDir ] || [ ! -d $configDir ]
+then
+  echo "Invalid configuration directory"
+  usage
+fi
+
+
+# install dependencies
+if [ -z `which eyaml` ]
+then
+  echo "Installing dependency hiera-eyaml"
+  sudo apt-get -qq -y install hiera-eyaml > /dev/null
+fi
+
+
+# decrypt eyml files
+for eymlFile in $configDir/**/*.eyml
+do
+  ymlFile="${eymlFile%.eyml}.yml"
+  eyaml decrypt \
+    --pkcs7-private-key=$privateKeyFile \
+    --pkcs7-public-key=$publicKeyFile \
+    --file $eymlFile > $ymlFile
+done
+
+
+# cleanup tmp files
+[ -f "${privateKeyTmpFile}" ] && rm $privateKeyTmpFile
+[ -f "${publicKeyTmpFile}" ] && rm $publicKeyTmpFile
