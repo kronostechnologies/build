@@ -188,7 +188,7 @@ if $CIRCLECI; then
     echo "Deploying './package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb' to 'repo.ktech.io' for '${STAGE}'"
     scp -o SendEnv=DEPLOY_PACKAGE_NAME -i ~/.ssh/id_circleci_github "./package/${DEPLOY_PACKAGE_NAME}_${VERSION}_all.deb" kronostechnologies-build@repo.ktech.io:
     ssh -o SendEnv=DEPLOY_PACKAGE_NAME -i ~/.ssh/id_circleci_github kronostechnologies-build@repo.ktech.io "freight add ${STAGE}"
-    ssh -o SendEnv=DEPLOY_PACKAGE_NAME -i ~/.ssh/id_circleci_github kronostechnologies-build@repo.ktech.io "deploy ${STAGE}"
+    #ssh -o SendEnv=DEPLOY_PACKAGE_NAME -i ~/.ssh/id_circleci_github kronostechnologies-build@repo.ktech.io "deploy ${STAGE}"
 fi
 
 echo 'done'
