@@ -7,16 +7,17 @@ import semver
 import functools
 import sys
 
-from typing import Dict, List
+from typing import Dict, List, Tuple, Callable
+
+ProjectVersionArg = Tuple[str, str]
 
 
 class Image:
     __pin_prefix = 'pin-'
     __version_prefix = 'version-'
 
-    def __init__(self, client, payload):
+    def __init__(self, client, payload: Dict):
         self.client = client
-        """ :type: Client """
 
         self.name = payload['repositoryName']
         self.digest = payload['imageDigest']
@@ -36,7 +37,7 @@ class Image:
 
         return self.__manifest
 
-    def add_pin(self, pin):
+    def add_pin(self, pin: str):
         if pin in self.pins:
             raise ValueError('Pin {} already exists!'.format(pin))
         self.client.put_image_tag(self, 'pin-' + pin)
@@ -46,15 +47,14 @@ class Image:
 class Repository:
     __tag_version_prefix = 'version-'
 
-    def __init__(self, client, payload):
+    def __init__(self, client, payload: Dict):
         self.client = client
-        """ :type: Client """
 
         self.__name = payload['repositoryName']
 
         self.__images = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__name
 
     def get_images(self) -> List[Image]:
@@ -63,54 +63,53 @@ class Repository:
 
         return self.__images
 
-    def get_images_by_version(self) -> Dict[str, Image]:
-        versions = dict()
+    def get_images_by_property(self, prop: str) -> Dict[str, Image]:
+        output = dict()
+
         for image in self.get_images():
-            for version in image.versions:
-                versions[version] = image
+            for item in getattr(image, prop):
+                output[item] = image
 
-        return versions
-
-    def get_images_by_pin(self) -> Dict[str, Image]:
-        pins = dict()
-        for image in self.get_images():
-            for pin in image.pins:
-                pins[pin] = image
-
-        return pins
+        return output
 
 
 class Client:
     def __init__(self):
-        self.client = boto3.client('ecr')
+        self.__client = boto3.client('ecr')
         """ :type: pyboto3.ecr """
 
-    def get_repositories(self, names: [str] = None) -> List[Repository]:
+    def get_repositories(self, names: List[str] = None) -> List[Repository]:
         args = {}
+
         if names:
             args['repositoryNames'] = names
 
-        response = self.client.describe_repositories(**args)
+        response = self.__client.describe_repositories(**args)
         return [Repository(self, r) for r in response['repositories']]
 
     def get_images_for_repository(self, name: str) -> List[Image]:
-        response = self.client.describe_images(repositoryName=name, filter={'tagStatus': 'TAGGED'})
+        response = self.__client.describe_images(repositoryName=name, filter={'tagStatus': 'TAGGED'})
         return [Image(self, i) for i in response['imageDetails']]
 
     def get_image_details(self, image: Image) -> dict:
-        return \
-        self.client.batch_get_image(repositoryName=image.name, imageIds=[{'imageDigest': image.digest}])['images'][0]
+        return self.__client.batch_get_image(
+            repositoryName=image.name,
+            imageIds=[
+                {'imageDigest': image.digest}
+            ]
+        )['images'][0]
 
     def put_image_tag(self, image: Image, tag: str):
-        self.client.put_image(repositoryName=image.name, imageManifest=image.get_manifest(), imageTag=tag)
+        self.__client.put_image(repositoryName=image.name, imageManifest=image.get_manifest(), imageTag=tag)
 
 
 class Output:
     def __init__(self):
         self.pretty = sys.stdout.isatty()
 
-    def list_versions(self, repository, filter=None):
-        versions = repository.get_images_by_version()
+    # TODO: Move filter out
+    def list_versions(self, repository: Repository, filter: Callable = None):
+        versions = repository.get_images_by_property('versions')
 
         comparator = functools.cmp_to_key(semver.compare)
 
@@ -132,17 +131,17 @@ class Output:
 
 
 class Commands:
-    def __init__(self, client, output):
+    def __init__(self, client: Client, output: Output):
         self.client = client
         self.output = output
 
-    def show_versions(self, repositories):
+    def show_versions(self, repositories: List[str]):
         repositories = self.client.get_repositories(repositories)
 
         for repo in sorted(repositories, key=lambda k: str(k)):
             self.output.list_versions(repo)
 
-    def list_pins(self, environments=None):
+    def list_pins(self, environments: List[str] = None):
         repositories = self.client.get_repositories()
 
         for repo in sorted(repositories, key=lambda k: str(k)):
@@ -151,17 +150,20 @@ class Commands:
             else:
                 self.output.list_versions(repo, lambda x: x.pins)
 
-    def set_pins(self, environment, projects):
+    def set_pins(self, environment: str, projects: List[ProjectVersionArg]):
         repositories = self.client.get_repositories()
 
         for project, version in projects:
             for repo in repositories:
                 if str(repo) == project or str(repo).startswith(project + '-'):
+                    versions = repo.get_images_by_property('versions')
+                    pins = repo.get_images_by_property('pins')
 
-                    pins = repo.get_images_by_pin()
-
-                    versions = repo.get_images_by_version()
-                    new_image = versions[version]
+                    try:
+                        new_image = versions[version]
+                    except KeyError:
+                        print("Version {} not found for {}! Skipping.".format(version, repo))
+                        continue
 
                     if environment in new_image.pins:
                         print(repo, 'is already tagged for', environment)
@@ -169,21 +171,22 @@ class Commands:
 
                     new_image.add_pin('pin-' + environment)
                     print('Pinned {} to {}!'.format(repo, version))
-                    try:
-                        old_image = pins[environment + '-old']
-                        old_image.add_pin(environment + '-old-old')
-                    except KeyError:
-                        print("Could not find old image")
 
                     try:
                         current_image = pins[environment]
                         current_image.add_pin(environment + '-old')
                     except KeyError:
-                        print("Could not find current image")
+                        print("No image to pin with {}-old".format(environment))
+
+                    try:
+                        old_image = pins[environment + '-old']
+                        old_image.add_pin(environment + '-old-old')
+                    except KeyError:
+                        print("No image to pin with {}-old-old".format(environment))
 
 
-def project_version(str):
-    project, version = str.split('@')
+def project_version(arg: str) -> ProjectVersionArg:
+    project, version = arg.split('@')
     if not re.compile('^[A-Za-z0-9_.\-]+$').fullmatch(project):
         raise ValueError("{} is not a valid project name".format(project))
     semver.parse(version)
@@ -202,11 +205,11 @@ def main():
     set_parser.add_argument('ENVIRONMENT', help='Environment pin to add')
     set_parser.add_argument('PROJECT', nargs='+', type=project_version, help='Project to pin: project@semver')
 
-    list_parser = subparsers.add_parser('show', help='List pins')
+    list_parser = subparsers.add_parser('show', help='Show pins')
     list_parser.set_defaults(func=lambda e: commands.list_pins(e.ENVIRONMENT))
     list_parser.add_argument('ENVIRONMENT', nargs='*', help='Environment to list pins from')
 
-    versions_parser = subparsers.add_parser('list-versions', help='Show available versions')
+    versions_parser = subparsers.add_parser('list-versions', help='List available versions')
     versions_parser.set_defaults(func=lambda p: commands.show_versions(p.PROJECT))
     versions_parser.add_argument('PROJECT', nargs='*')
 
