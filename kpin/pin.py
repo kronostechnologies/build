@@ -1,5 +1,8 @@
 #! /usr/bin/env python3
 
+import argparse
+
+
 import boto3
 import re
 import semver
@@ -24,7 +27,7 @@ class Repository:
         image_tag_list = [r['imageTags'] for r in response['imageDetails']]
         images = dict()
         for image_tags in image_tag_list:
-            version, tags = self.__get_image_tag_dict(image_tags, image_filter)
+            version, tags = self.__get_image_tag_version(image_tags, image_filter)
             images[version] = tags
 
         return images
@@ -80,6 +83,21 @@ class Commands:
 
 
 def main():
+    parser = argparse.ArgumentParser(add_help=False)
+    subparsers = parser.add_subparsers(title=None, metavar='COMMAND')
+    subparsers.dest = 'command'
+    spa = subparsers.add_parser('show', help='show help')
+    spa = subparsers.add_parser('set', help='set help')
+    spa = subparsers.add_parser('list', help='list help')
+    spa = subparsers.add_parser('help', help='help help')
+
+    args = parser.parse_args()
+    print(args.command)
+    if args.command in [None, 'help']:
+        parser.print_help()
+
+    exit(0)
+
     global client
     client = Client()
     global output
