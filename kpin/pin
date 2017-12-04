@@ -71,7 +71,7 @@ class Repository:
 
         return versions
 
-    def get_images_by_pin(self) -> List[Image]:
+    def get_images_by_pin(self) -> Dict[str, Image]:
         pins = dict()
         for image in self.get_images():
             for pin in image.pins:
@@ -98,10 +98,12 @@ class Client:
         return [Image(self, i) for i in response['imageDetails']]
 
     def get_image_details(self, image: Image) -> dict:
-        return self.client.batch_get_image(repositoryName=image.name, imageIds=[{'imageDigest': image.digest}])['images'][0]
+        return \
+        self.client.batch_get_image(repositoryName=image.name, imageIds=[{'imageDigest': image.digest}])['images'][0]
 
     def put_image_tag(self, image: Image, tag: str):
         self.client.put_image(repositoryName=image.name, imageManifest=image.get_manifest(), imageTag=tag)
+
 
 class Output:
     def __init__(self):
@@ -178,9 +180,6 @@ class Commands:
                         current_image.add_pin(environment + '-old')
                     except KeyError:
                         print("Could not find current image")
-
-
-
 
 
 def project_version(str):
