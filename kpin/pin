@@ -142,7 +142,7 @@ class Commands:
         for repository in repositories:
             images_by_pin = repository.get_images_by_property('pins')
 
-            for pin, image in images_by_pin:
+            for pin, image in images_by_pin.items():
                 if not environments or pin in environment_names:
                     environments.setdefault(pin, dict())[image.name] = image
 
