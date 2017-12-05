@@ -7,17 +7,17 @@ import semver
 import functools
 import sys
 
-from typing import Dict, List, Tuple, Callable
+from typing import Dict, List, Tuple, Callable, ItemsView
 
 ProjectVersionArg = Tuple[str, str]
-
 
 class Image:
     __pin_prefix = 'pin-'
     __version_prefix = 'version-'
 
     def __init__(self, client, payload: Dict):
-        self.client = client
+        self.__client = client
+        """ :type: pyboto3.ecr """
 
         self.name = payload['repositoryName']
         self.digest = payload['imageDigest']
@@ -33,22 +33,29 @@ class Image:
 
     def get_manifest(self) -> str:
         if self.__manifest is None:
-            self.__manifest = self.client.get_image_details(self)['imageManifest']
+            self.__manifest = self.__client.batch_get_image(
+                repositoryName=self.name,
+                imageIds=[
+                    {'imageDigest': self.digest}
+                ]
+            )['images'][0]['imageManifest']
 
         return self.__manifest
 
     def add_pin(self, pin: str):
         if pin in self.pins:
             raise ValueError('Pin {} already exists!'.format(pin))
-        self.client.put_image_tag(self, 'pin-' + pin)
+        self.__client.put_image(
+            repositoryName=self.name,
+            imageManifest=self.get_manifest(),
+            imageTag=self.__pin_prefix + pin)
         self.pins.append(pin)
 
 
 class Repository:
-    __tag_version_prefix = 'version-'
-
     def __init__(self, client, payload: Dict):
-        self.client = client
+        self.__client = client
+        """ :type: pyboto3.ecr """
 
         self.__name = payload['repositoryName']
 
@@ -59,7 +66,8 @@ class Repository:
 
     def get_images(self) -> List[Image]:
         if self.__images is None:
-            self.__images = self.client.get_images_for_repository(self.__name)
+            response = self.__client.describe_images(repositoryName=self.__name, filter={'tagStatus': 'TAGGED'})
+            self.__images = [Image(self.__client, i) for i in response['imageDetails']]
 
         return self.__images
 
@@ -73,9 +81,9 @@ class Repository:
         return output
 
 
-class Client:
-    def __init__(self):
-        self.__client = boto3.client('ecr')
+class Registry:
+    def __init__(self, client):
+        self.__client = client
         """ :type: pyboto3.ecr """
 
     def get_repositories(self, names: List[str] = None) -> List[Repository]:
@@ -85,92 +93,83 @@ class Client:
             args['repositoryNames'] = names
 
         response = self.__client.describe_repositories(**args)
-        return [Repository(self, r) for r in response['repositories']]
-
-    def get_images_for_repository(self, name: str) -> List[Image]:
-        response = self.__client.describe_images(repositoryName=name, filter={'tagStatus': 'TAGGED'})
-        return [Image(self, i) for i in response['imageDetails']]
-
-    def get_image_details(self, image: Image) -> dict:
-        return self.__client.batch_get_image(
-            repositoryName=image.name,
-            imageIds=[
-                {'imageDigest': image.digest}
-            ]
-        )['images'][0]
-
-    def put_image_tag(self, image: Image, tag: str):
-        self.__client.put_image(repositoryName=image.name, imageManifest=image.get_manifest(), imageTag=tag)
+        return [Repository(self.__client, r) for r in response['repositories']]
 
 
 class Output:
-    def __init__(self):
-        self.pretty = sys.stdout.isatty()
+    def __init__(self, pretty):
+        self.pretty = pretty
 
-    # TODO: Move filter out
-    def list_versions(self, repository: Repository, filter: Callable = None):
-        versions = repository.get_images_by_property('versions')
-
-        comparator = functools.cmp_to_key(semver.compare)
-
+    def print_list(self, name: str, items: ItemsView[str, Image], property: str, comparator: Callable = None):
         buffer = []
-        for version, image in sorted(versions.items(), key=lambda key: comparator(key[0])):
-            if filter is not None and not filter(image):
-                continue
 
-            if image.pins:
-                buffer.append('{} ({})'.format(version, ' '.join(image.pins)))
+        args = {}
+        if comparator is not None:
+            args['key'] = lambda t: comparator(t[0])
+
+        for key, image in sorted(items, **args):
+            if getattr(image, property):
+                buffer.append('{} ({})'.format(key, ' '.join(getattr(image, property))))
             else:
-                buffer.append('{}'.format(version))
+                buffer.append(key)
 
         if buffer:
             if self.pretty:
-                print('{}:\n  '.format(repository) + '\n  '.join(buffer) + '\n')
+                print('{}:\n  '.format(name) + '\n  '.join(buffer) + '\n')
             else:
-                print('{}: '.format(repository) + '\n{}: '.format(repository).join(buffer))
+                print('{}: '.format(name) + '\n{}: '.format(name).join(buffer))
 
 
 class Commands:
-    def __init__(self, client: Client, output: Output):
-        self.client = client
+    def __init__(self, registry: Registry, output: Output):
+        self.registry = registry
         self.output = output
 
-    def show_versions(self, repositories: List[str]):
-        repositories = self.client.get_repositories(repositories)
+    def show_versions(self, repository_names: List[str] = None):
+        repositories = self.registry.get_repositories(repository_names)
 
-        for repo in sorted(repositories, key=lambda k: str(k)):
-            self.output.list_versions(repo)
+        comparator = functools.cmp_to_key(semver.compare)
 
-    def list_pins(self, environments: List[str] = None):
-        repositories = self.client.get_repositories()
+        for repository in sorted(repositories, key=lambda k: str(k)):
+            images_by_version = repository.get_images_by_property('versions')
 
-        for repo in sorted(repositories, key=lambda k: str(k)):
-            if environments:
-                self.output.list_versions(repo, lambda x: [True for pin in x.pins if pin in environments])
-            else:
-                self.output.list_versions(repo, lambda x: x.pins)
+            self.output.print_list(str(repository), images_by_version.items(), 'pins', comparator)
+
+    def show_pins(self, environment_names: List[str] = None):
+        repositories = self.registry.get_repositories()
+
+        environments = dict()
+        for repository in repositories:
+            images_by_pin = repository.get_images_by_property('pins')
+
+            for pin, image in images_by_pin:
+                if not environments or pin in environment_names:
+                    environments.setdefault(pin, dict())[image.name] = image
+
+        for environment, images in sorted(environments.items(), key=lambda k: k[0]):
+            self.output.print_list(environment, images.items(), 'versions')
 
     def set_pins(self, environment: str, projects: List[ProjectVersionArg]):
-        repositories = self.client.get_repositories()
+        repositories = self.registry.get_repositories()
 
         for project, version in projects:
-            for repo in repositories:
-                if str(repo) == project or str(repo).startswith(project + '-'):
-                    versions = repo.get_images_by_property('versions')
-                    pins = repo.get_images_by_property('pins')
+            for repository in repositories:
+                if str(repository) == project or str(repository).startswith(project + '-'):
+                    versions = repository.get_images_by_property('versions')
+                    pins = repository.get_images_by_property('pins')
 
                     try:
                         new_image = versions[version]
                     except KeyError:
-                        print("Version {} not found for {}! Skipping.".format(version, repo))
+                        print("Version {} not found for {}! Skipping.".format(version, repository))
                         continue
 
                     if environment in new_image.pins:
-                        print(repo, 'is already tagged for', environment)
+                        print(repository, 'is already tagged for', environment)
                         continue
 
                     new_image.add_pin('pin-' + environment)
-                    print('Pinned {} to {}!'.format(repo, version))
+                    print('Pinned {} to {}!'.format(repository, version))
 
                     try:
                         current_image = pins[environment]
@@ -194,7 +193,9 @@ def project_version(arg: str) -> ProjectVersionArg:
 
 
 def main():
-    commands = Commands(Client(), Output())
+    registry = Registry(boto3.client('ecr'))
+    output = Output(sys.stdout.isatty())
+    commands = Commands(registry, output)
 
     parser = argparse.ArgumentParser()
 
@@ -206,7 +207,7 @@ def main():
     set_parser.add_argument('PROJECT', nargs='+', type=project_version, help='Project to pin: project@semver')
 
     list_parser = subparsers.add_parser('show', help='Show pins')
-    list_parser.set_defaults(func=lambda e: commands.list_pins(e.ENVIRONMENT))
+    list_parser.set_defaults(func=lambda e: commands.show_pins(e.ENVIRONMENT))
     list_parser.add_argument('ENVIRONMENT', nargs='*', help='Environment to list pins from')
 
     versions_parser = subparsers.add_parser('list-versions', help='List available versions')
