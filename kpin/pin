@@ -16,9 +16,9 @@ ProjectVersionArg = Tuple[str, str]
 
 class Image:
     __pin_prefix = 'pin-'
-    __pin_regex = re.compile(__pin_prefix)
+    __pin_regex = re.compile("^" + __pin_prefix)
     __version_prefix = 'version-'
-    __version_regex = re.compile(__version_prefix)
+    __version_regex = re.compile("^" + __version_prefix)
 
     def __init__(self, client, payload: Dict):
         self.__client = client
