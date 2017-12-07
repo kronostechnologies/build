@@ -1,0 +1,282 @@
+#! /usr/bin/env python3
+
+import argparse
+import functools
+import re
+import sys
+from typing import Dict, List, Tuple, Callable, ItemsView, Pattern
+
+from termcolor import cprint
+
+import boto3
+import semver
+
+ProjectVersionArg = Tuple[str, str]
+
+
+class Image:
+    __pin_prefix = 'pin-'
+    __version_prefix = 'version-'
+
+    def __init__(self, client, payload: Dict):
+        self.__client = client
+        """ :type: pyboto3.ecr """
+
+        self.name = payload['repositoryName']
+        self.digest = payload['imageDigest']
+        self.versions = []
+        self.pins = []
+        self.__manifest = None
+
+        for tag in payload['imageTags']:
+            if tag.startswith(self.__version_prefix):
+                self.versions.append(tag.lstrip(self.__version_prefix))
+            elif tag.startswith(self.__pin_prefix):
+                self.pins.append(tag.lstrip(self.__pin_prefix))
+
+    def get_manifest(self) -> str:
+        if self.__manifest is None:
+            self.__manifest = self.__client.batch_get_image(
+                repositoryName=self.name,
+                imageIds=[
+                    {'imageDigest': self.digest}
+                ]
+            )['images'][0]['imageManifest']
+
+        return self.__manifest
+
+    def add_pin(self, pin: str):
+        if pin in self.pins:
+            raise ValueError('Pin {} already exists!'.format(pin))
+        self.__client.put_image(
+            repositoryName=self.name,
+            imageManifest=self.get_manifest(),
+            imageTag=self.__pin_prefix + pin)
+        self.pins.append(pin)
+
+
+class Repository:
+    def __init__(self, client, payload: Dict):
+        self.__client = client
+        """ :type: pyboto3.ecr """
+
+        self.name = payload['repositoryName']
+
+        self.__images = None
+
+    def get_images(self) -> List[Image]:
+        if self.__images is None:
+            response = self.__client.describe_images(repositoryName=self.name, filter={'tagStatus': 'TAGGED'})
+            self.__images = [Image(self.__client, i) for i in response['imageDetails']]
+
+        return self.__images
+
+    def get_images_by_property(self, prop: str) -> Dict[str, Image]:
+        output = dict()
+
+        for image in self.get_images():
+            for item in getattr(image, prop):
+                output[item] = image
+
+        return output
+
+
+class RepositoryGroup:
+    def __init__(self, name):
+        self.name = name
+        self.main_repository = None
+        self.additional_repositories = []
+
+    def add_repository(self, repository: Repository):
+        if repository.name == self.name:
+            self.main_repository = repository
+        else:
+            self.additional_repositories.append(repository)
+
+    def __iter__(self):
+        return iter([self.main_repository] + self.additional_repositories)
+
+
+class Registry:
+    def __init__(self, client, **kwargs):
+        self.__client = client
+        """ :type: pyboto3.ecr """
+
+        self.__group_match = kwargs.get('groupMatcher', None)
+        """ :type: Pattern """
+
+    def get_repositories(self, names: List[str] = None) -> Dict[str, Repository]:
+        args = {}
+
+        if names:
+            args['repositoryNames'] = names
+
+        response = self.__client.describe_repositories(**args)
+        return {x.name: x for x in [Repository(self.__client, r) for r in response['repositories']]}
+
+    def get_repository_groups(self, names: List[str] = None) -> Dict[str, RepositoryGroup]:
+        groups = {}
+
+        for name, repository in self.get_repositories().items():
+            match = self.__group_match.fullmatch(name)
+            if match is not None:
+                matches = match.groupdict()
+                group_name = matches.get('group', None)
+                if names is None or group_name in names:
+                    repository_group = groups.setdefault(group_name, RepositoryGroup(group_name))
+                    repository_group.add_repository(repository)
+
+        return groups
+
+
+class Output:
+    @staticmethod
+    def print_list(name: str, items: ItemsView[str, Image], property: str, comparator: Callable = None):
+        buffer = []
+
+        args = {}
+        if comparator is not None:
+            args['key'] = lambda t: comparator(t[0])
+
+        for key, image in sorted(items, **args):
+            if getattr(image, property):
+                buffer.append('{} ({})'.format(key, ' '.join(getattr(image, property))))
+            else:
+                buffer.append(key)
+
+        if buffer:
+            if sys.stdout.isatty():
+                print('{}:\n  '.format(name) + '\n  '.join(buffer) + '\n')
+            else:
+                print('{}: '.format(name) + '\n{}: '.format(name).join(buffer))
+
+    @staticmethod
+    def print_warning(message):
+        if sys.stderr.isatty():
+            cprint('Warning: {}'.format(message), 'yellow', attrs=['bold'], file=sys.stderr)
+        else:
+            print('Warning: {}'.format(message), file=sys.stderr)
+
+    @staticmethod
+    def print_error(message):
+        if sys.stderr.isatty():
+            cprint('Error: {}'.format(message), 'red', attrs=['bold'], file=sys.stderr)
+        else:
+            print('Error: {}'.format(message), file=sys.stderr)
+
+    @staticmethod
+    def print_success(message):
+        if sys.stdout.isatty():
+            cprint(message, 'green', attrs=['bold'])
+        else:
+            print(message)
+
+
+class Commands:
+    def __init__(self, registry: Registry, output: Output):
+        self.registry = registry
+        self.output = output
+
+    def list_versions(self, repository_names: List[str] = None):
+        repository_groups = self.registry.get_repository_groups(repository_names)
+
+        comparator = functools.cmp_to_key(semver.compare)
+
+        for name, repository_group in sorted(repository_groups.items(), key=lambda k: k[0]):
+            images_by_version = repository_group.main_repository.get_images_by_property('versions')
+
+            self.output.print_list(name, images_by_version.items(), 'pins', comparator)
+
+    def show_pins(self, environment_names: List[str] = None):
+        repository_groups = self.registry.get_repository_groups()
+
+        environments = dict()
+        for name, repository_group in repository_groups.items():
+            images_by_pin = repository_group.main_repository.get_images_by_property('pins')
+
+            for pin, image in images_by_pin.items():
+                if not environment_names or pin in environment_names:
+                    environments.setdefault(pin, dict())[image.name] = image
+
+        for environment, images in sorted(environments.items(), key=lambda k: k[0]):
+            self.output.print_list(environment, images.items(), 'versions')
+
+    def set_pins(self, environment: str, projects: List[ProjectVersionArg]):
+        repository_groups = self.registry.get_repository_groups()
+
+        for project, version in projects:
+            repositories = repository_groups[project]
+
+            for repository in repositories:
+                versions = repository.get_images_by_property('versions')
+                pins = repository.get_images_by_property('pins')
+
+                try:
+                    new_image = versions[version]
+                    new_image.add_pin(environment)
+                    self.output.print_success('{}@{} set for {}!'.format(repository.name, version, environment))
+                except KeyError:
+                    self.output.print_error("{}@{} skipped: version not found."
+                                            .format(repository.name, version))
+                    continue
+                except ValueError:
+                    self.output.print_error("{}@{} skipped: already set for {}."
+                                            .format(repository.name, version, environment))
+                    continue
+
+                try:
+                    current_image = pins[environment]
+                    current_image.add_pin(environment + '-old')
+                except KeyError:
+                    self.output.print_warning("No image to pin with {}-old".format(environment))
+
+                try:
+                    old_image = pins[environment + '-old']
+                    old_image.add_pin(environment + '-old-old')
+                except KeyError:
+                    self.output.print_warning("No image to pin with {}-old-old".format(environment))
+
+
+def project_version(arg: str) -> ProjectVersionArg:
+    project, version = arg.split('@')
+    if not re.compile('^[A-Za-z0-9_.\-]+$').fullmatch(project):
+        raise ValueError("{} is not a valid project name".format(project))
+    semver.parse(version)
+    return project, version
+
+
+def main():
+    registry = Registry(boto3.client('ecr'),
+                        groupMatcher=re.compile('(?P<group>[a-z\-]+?)(-cron|-worker)?'))
+    output = Output()
+    commands = Commands(registry, output)
+
+    parser = argparse.ArgumentParser()
+
+    subparsers = parser.add_subparsers(title='Commands', metavar=None)
+
+    set_parser = subparsers.add_parser('set', help='Set pins')
+    set_parser.set_defaults(func=lambda e: commands.set_pins(e.ENVIRONMENT, e.PROJECT))
+    set_parser.add_argument('ENVIRONMENT', help='Environment pin to add')
+    set_parser.add_argument('PROJECT', nargs='+', type=project_version, help='Project to pin: project@semver')
+
+    list_parser = subparsers.add_parser('show', help='Show pins')
+    list_parser.set_defaults(func=lambda e: commands.show_pins(e.ENVIRONMENT))
+    list_parser.add_argument('ENVIRONMENT', nargs='*', help='Environment to list pins from')
+
+    versions_parser = subparsers.add_parser('list-versions', help='List available versions')
+    versions_parser.set_defaults(func=lambda p: commands.list_versions(p.PROJECT or None))
+    versions_parser.add_argument('PROJECT', nargs='*')
+
+    # autohelp
+    if not sys.argv[1:]:
+        sys.argv.insert(1, '-h')
+
+    args = parser.parse_args()
+
+    if hasattr(args, 'func'):
+        args.func(args)
+
+
+if __name__ == '__main__':
+    main()
