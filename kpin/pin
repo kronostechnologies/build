@@ -16,7 +16,9 @@ ProjectVersionArg = Tuple[str, str]
 
 class Image:
     __pin_prefix = 'pin-'
+    __pin_regex = re.compile(__pin_prefix)
     __version_prefix = 'version-'
+    __version_regex = re.compile(__version_prefix)
 
     def __init__(self, client, payload: Dict):
         self.__client = client
@@ -30,9 +32,9 @@ class Image:
 
         for tag in payload['imageTags']:
             if tag.startswith(self.__version_prefix):
-                self.versions.append(tag.lstrip(self.__version_prefix))
+                self.versions.append(self.__version_regex.sub("", tag))
             elif tag.startswith(self.__pin_prefix):
-                self.pins.append(tag.lstrip(self.__pin_prefix))
+                self.pins.append(self.__pin_regex.sub("", tag))
 
     def get_manifest(self) -> str:
         if self.__manifest is None:
