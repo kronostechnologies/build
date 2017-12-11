@@ -38,7 +38,7 @@ aws_secret_access_key=YOU_SECRET_KEY
 
 Add kt-accp pin on version 1.0.0 for crm application.
 ```
-AWS_PROFILE=profile pin set kt-accp crm@1.0.0
+AWS_PROFILE=admin-mgmt-ecr pin set kt-accp crm@1.0.0
 ```
  > crm also include any crm-* images.
 
