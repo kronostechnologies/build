@@ -18,7 +18,7 @@ Commands:
 ### Setting a pin on a project
 
 ```
-pin set kt-accp crm@1.0.0
+AWS_PROFILE=profile pin set kt-accp crm@1.0.0
 ```
 
 ## Install
