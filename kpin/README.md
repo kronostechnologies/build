@@ -24,7 +24,7 @@ Below is a config file example (~/.aws/config)
 ```
 [profile admin-mgmt-ecr]
 region=us-east-1
-role_arn = arn:aws:iam::611542441284:role/admin-mgmt-ecr
+role_arn = arn:aws:iam::611542441284:role/ecr-admin
 source_profile = default
 ``` 
 
@@ -38,7 +38,7 @@ aws_secret_access_key=YOU_SECRET_KEY
 
 Add kt-accp pin on version 1.0.0 for crm application.
 ```
-AWS_PROFILE=admin-mgmt-ecr pin set kt-accp crm@1.0.0
+AWS_PROFILE=admin-mgmt-ecr ./pin set kt-accp crm@1.0.0
 ```
  > crm also include any crm-* images.
 
