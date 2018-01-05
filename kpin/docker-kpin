@@ -1,0 +1,20 @@
+#!/bin/bash
+
+declare -a FLAGS=( --rm --read-only )
+
+if [[ -d "${HOME}/.aws" ]];
+then
+  FLAGS+=( -v "${HOME}/.aws":/root/.aws )
+fi
+
+if [[ -t 1 ]];
+then
+  FLAGS+=( --tty )
+fi
+
+if [[ -n "${AWS_PROFILE}" ]];
+then
+  FLAGS+=( -e AWS_PROFILE="${AWS_PROFILE}" )
+fi
+
+docker run "${FLAGS[@]}" kronostechnologies/kpin "$@"
